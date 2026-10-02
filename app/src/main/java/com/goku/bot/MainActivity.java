@@ -9,6 +9,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -19,6 +20,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ProgressBar progress;
     private String botScript = "";
+    private boolean injected = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -29,6 +31,7 @@ public class MainActivity extends Activity {
         webView = findViewById(R.id.webview);
         progress = findViewById(R.id.progress);
 
+        // Load bot.js from assets
         try {
             InputStream is = getAssets().open("bot.js");
             BufferedReader br = new BufferedReader(new InputStreamReader(is));
@@ -40,7 +43,7 @@ public class MainActivity extends Activity {
             br.close();
             botScript = sb.toString();
         } catch (Exception e) {
-            botScript = "console.log('Bot load error: " + e.getMessage() + "');";
+            botScript = "";
         }
 
         WebSettings s = webView.getSettings();
@@ -60,20 +63,31 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 progress.setVisibility(View.VISIBLE);
+                injected = false;
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 progress.setVisibility(View.GONE);
 
-                if (url != null && url.contains("jalwa.win") && !botScript.isEmpty()) {
-                    view.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            view.evaluateJavascript(botScript, null);
-                        }
-                    }, 3000);
+                if (botScript.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "❌ bot.js EMPTY/MISSING", Toast.LENGTH_LONG).show();
+                    return;
+                } else {
+                    Toast.makeText(MainActivity.this, "📦 bot.js loaded: " + botScript.length() + " chars", Toast.LENGTH_LONG).show();
                 }
+
+                if (injected) return;
+                injected = true;
+
+                view.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        view.evaluateJavascript(botScript, value -> {
+                            Toast.makeText(MainActivity.this, "✅ Bot injected!", Toast.LENGTH_LONG).show();
+                        });
+                    }
+                }, 4000);
             }
         });
 
